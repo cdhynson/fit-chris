@@ -2,6 +2,7 @@ import os
 import time
 import logging
 import mysql.connector
+from datetime import datetime, timedelta
 
 from typing import Optional
 from dotenv import load_dotenv
@@ -87,6 +88,7 @@ async def setup_database(initial_users: dict = None):
             CREATE TABLE sessions (
                 id VARCHAR(36) PRIMARY KEY,
                 user_id INT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -131,7 +133,7 @@ async def setup_database(initial_users: dict = None):
                     cursor.execute(insert_query, (user["fullname"], user["username"], user["password"], user["location"]))
                 connection.commit()
                 logger.info(f"Inserted {len(initial_users)} initial users")
-                
+
             except Error as e:
                 logger.error(f"Error inserting initial users: {e}")
                 raise
@@ -189,15 +191,19 @@ async def get_user_by_id(user_id: int) -> Optional[dict]:
             connection.close()
 
 
+SESSION_DURATION = timedelta(minutes=30)
+
 async def create_session(user_id: int, session_id: str) -> bool:
     """Create a new session in the database."""
     connection = None
     cursor = None
     try:
+        expires_at = datetime.utcnow() + SESSION_DURATION
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute(
-            "INSERT INTO sessions (id, user_id) VALUES (%s, %s)", (session_id, user_id)
+            "INSERT INTO sessions (id, user_id, expires_at) VALUES (%s, %s, %s)",
+            (session_id, user_id, expires_at)
         )
         connection.commit()
         return True

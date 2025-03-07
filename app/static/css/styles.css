@@ -14,12 +14,17 @@
 /* ---------------------------------- */
 /* ---------------------------------- */
 
-body {
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
     background-color: #f8f8f8;
     padding-top: 80px;
 }
 
-.main {
+main {
   flex: 1;
 }
 
@@ -28,14 +33,14 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: fixed;  /* Keeps the header fixed while scrolling */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     padding: 20px 40px;
     background: #ffffff;
-    border-bottom: 1px solid #ddd;  /* Adds a subtle border */
-    z-index: 1000;  /* Ensures it stays on top */
+    border-bottom: 1px solid #ddd;
+    z-index: 1000;
 }
 
 .logo a {
@@ -87,6 +92,53 @@ body {
 .btn-profile img:hover {
     transform: scale(1.1);
 }
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: white;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 10px 20px;
+    color: black;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.dropdown-menu a:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+#user-greeting {
+    margin-top: 12px;
+    font-size: 16px;
+    color: #616161;
+    letter-spacing: 1px;
+}
+
+#user-greeting strong {
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #242424;
+}
+
 
 /* ---------- FOOTER ---------- */
 .footer-container {
@@ -152,7 +204,6 @@ body {
 /* ---------- HERO SECTION ---------- */
 .hero {
     text-align: center;
-    margin-top: 50px;
 }
 
 .title {
@@ -300,16 +351,16 @@ body {
 }
 
 .get-start-btn {
-    display: block; /* Makes the button take full width */
-    width: 100%; /* Makes it fill the container */
-    padding: 15px 0; /* Adjust padding for better height */
+    display: block;
+    width: 100%;
+    padding: 15px 0;
     font-size: 1.2rem;
     font-weight: bold;
     background: black;
     color: white;
     text-decoration: none;
     border-radius: 6px;
-    text-align: center; /* Ensures text stays centered */
+    text-align: center;
     margin-top: 20px;
 }
 
@@ -480,3 +531,178 @@ body.login-page {
 /* --------- DASHBOARD PAGE --------- */
 /* ---------------------------------- */
 /* ---------------------------------- */
+
+
+
+/* ---------------------------------- */
+/* ---------------------------------- */
+/* ----------- PROFILE PAGE --------- */
+/* ---------------------------------- */
+/* ---------------------------------- */
+.device-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    max-width: 94%;
+    margin: 10px auto;
+}
+
+#add-device-btn {
+    padding: 10px 15px;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid #000000;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
+    background-color: rgb(158, 158, 158);
+}
+
+#add-device-btn:hover {
+    background-color: #696969;
+}
+
+#remove-device-dropdown {
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+}
+
+#device-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 20px;
+    border: 3px solid black;
+    padding: 30px;
+    margin: 40px auto;
+    max-width: 94%;
+    min-height: 500px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    position: relative; 
+}
+
+.empty-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2rem;
+    color: gray;
+    text-align: center;
+    width: 100%;
+}
+
+.device-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;  /* Centers items horizontally */
+    justify-content: center; /* Centers content vertically */
+    text-align: center; /* Ensures text is centered */
+    padding: 10px;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    width: 200px;
+    height: auto;
+    border: #000000 2px solid;
+}
+
+/* Center the image */
+.device-item img {
+    margin-top: 5px; 
+    width: 180px;
+    height: auto;
+    display: block; /* Removes extra spacing below image */
+    margin-bottom: 6px; /* Adds spacing below the image */
+}
+
+/* Center the text */
+.device-item h3 {
+    margin-top: 5px;
+    font-size: 1.6rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.device-id {
+    font-size: 1.1rem;
+    color: gray;
+    text-align: center;
+}
+
+
+.popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+    width: 300px;
+    text-align: center;
+}
+
+.popup-content label {
+    display: block;
+    margin-top: 10px;
+}
+
+.popup-content input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.popup-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+
+.popup-buttons button {
+    padding: 8px 12px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+#submit-device {
+    background-color: green;
+    color: white;
+}
+
+#cancel-device {
+    background-color: red;
+    color: white;
+}
+
+
+.greeting-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 40px;
+}
+
+.greeting-title {
+    font-size: 3rem;
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 10px;
+}
+
+.connected-title {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}

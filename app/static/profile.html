@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile | FIT</title>
+    <title>User Dashboard | FIT</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/profile.js"></script>
+    <link rel="icon" type="image/png" href="/static/images/bonix.png">
 </head>
 <body>
     <header class="header">
@@ -12,23 +14,58 @@
             <a href="/dashboard">FIT</a>
         </div>
         <nav class="nav-buttons">
-            <a href="/dashboard" class="btn-profile">
-                <img src="/static/images/profile.png" alt="Profile">
-            </a>
-        </nav>
+            <div class="dropdown">
+                <a href="/profile" class="btn-profile">
+                    <img src="/static/images/profile.png" alt="Profile">
+                </a>
+                <div class="dropdown-menu">
+                    <a href="/logout" id="logout-btn">Logout</a>
+                </div>
+            </div>
+        </nav>        
     </header>
 
-
-
-
-
-
-
-
-
-
-
+    <main>
+        <div class="greeting-container">
+            <h1 class="greeting-title">
+                <span id="greeting-text">Loading...</span> <span id="user-name">USER</span>!
+            </h1>
+            <h2 class="connected-title">Connected Device(s)</h2>
+        </div>
     
+        <!-- Add Device & Dropdown (Now Side by Side) -->
+        <div class="device-header">
+            <button id="add-device-btn">Add Device</button>
+            <select id="remove-device-dropdown">
+                <option value="">Select Device</option>
+            </select>
+        </div>
+    
+        <!-- Device Section -->
+        <div id="device-container">
+            <div id="device-list"></div>
+        </div>
+    
+        <!-- Add Device Pop-up Form -->
+        <div id="device-popup" class="popup">
+            <div class="popup-content">
+                <h2>Add a Device</h2>
+                <label for="device-name">Device Name:</label>
+                <input type="text" id="device-name" required>
+                
+                <label for="device-id">Device ID:</label>
+                <input type="text" id="device-id" required>
+    
+                <div class="popup-buttons">
+                    <button id="submit-device">Submit</button>
+                    <button id="cancel-device">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+
+
     <div class="footer-container">
         <div class="footer">
             <div class="footer-text">

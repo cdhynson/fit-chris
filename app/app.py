@@ -6,6 +6,8 @@ import uuid
 from typing import Dict
 from contextlib import asynccontextmanager
 
+from decorators import auth_required
+
 from database import (
     setup_database,
     get_user_by_username,
@@ -63,6 +65,12 @@ def read_html(file_path: str) -> str:
     with open(file_path, "r") as f:
         return f.read()
 
+@app.get("/user-info")
+@auth_required
+async def user_info(request: Request):
+    """Returns the logged-in user's full name."""
+    user = request.state.user
+    return JSONResponse(content={"fullname": user["fullname"]})
 
 # def get_error_html(username: str) -> str:
 #     error_html = read_html("./static/error.html")
@@ -157,56 +165,6 @@ async def login_page(request: Request):
     # if not, show login page
     return read_html("./static/login.html")
 
-# @app.post("/login")
-# async def login(request: Request):
-#     """Validate credentials and create a new session if valid"""
-#     # TODO: 4. Get username and password from form data (handled via FastAPI's Form)
-#     # Extract form data manually
-#     form_data = await request.form()
-#     username = form_data.get("username")
-#     password = form_data.get("password")
-
-#     print(f"Attempting login for user: {username} with password: {password}")
-
-#     if not username or not password:
-#         return JSONResponse(
-#             content={"error": "Username and password are required."},
-#             status_code=status.HTTP_400_BAD_REQUEST
-#         )
-    
-#     # TODO: 5. Check if username exists and password matches
-#     # Retrieve user from the database using the username
-#     user = await get_user_by_username(username)
-
-#     print(f"Retrieved user from database: {user}")  # Debugging step
-
-#     # Ensure user exists and password matches
-#     if not user or user["password"] != password:
-#         print(f"Login failed: Incorrect password for user {username}")  # Debugging step
-#         return JSONResponse(
-#             content={"error": "Invalid username or password."},
-#             status_code=status.HTTP_403_FORBIDDEN
-#         )
-
-#     # Retrieve user ID from the user data
-#     user_id = user["id"]
-
-#     # TODO: 6. Create a new session
-#     session_id = str(uuid.uuid4())
-#     await create_session(user_id=user_id, session_id=session_id)
-
-#     # TODO: 7. Create response with:
-#     #   - redirect to /user/{username}
-#     #   - set cookie with session ID
-#     #   - return the response
-#     response = JSONResponse(content={"message": "Login successful!", "redirect": f"/user/{username}"})
-#     response.set_cookie(key="sessionId", value=session_id, httponly=True)
-#     # response = RedirectResponse(url=f"/user/{username}", status_code=status.HTTP_303_SEE_OTHER)
-#     # response.set_cookie(key="sessionId", value=session_id, httponly=True)
-
-#     print(f"User {username} successfully logged in with session ID: {session_id}")  # Debugging step
-#     return response
-
 @app.post("/login")
 async def login(request: Request):
     """Validate credentials and create a new session if valid."""
@@ -276,8 +234,21 @@ async def user_page(username: str, request: Request):
 ## ----------------------------------------------------- ##
 ###########################################################
 @app.get("/dashboard", response_class=HTMLResponse)
+@auth_required
 async def signup_page(request: Request):
     return read_html("./static/dashboard.html")
+
+
+
+###########################################################
+## ----------------------------------------------------- ##
+## ---------------- PROFILE FUNCTIONALITY -------------- ##
+## ----------------------------------------------------- ##
+###########################################################
+@app.get("/profile", response_class=HTMLResponse)
+@auth_required
+async def profile_page(request: Request):
+    return read_html("./static/profile.html")
 
 
 

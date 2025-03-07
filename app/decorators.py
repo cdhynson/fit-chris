@@ -121,3 +121,34 @@ def _extract_request(args, kwargs):
 
     # Raise an error if the request object is missing
     raise HTTPException(status_code=500, detail="Request object not found in function arguments")
+
+async def is_authenticated(request):
+    """Checks if a user is authenticated based on session ID."""
+    session_id = request.cookies.get("sessionId")
+
+    if not session_id:
+        return None
+
+    session = await get_session(session_id)
+    if not session:
+        return None
+
+    # Check if session is expired
+    if session["expires_at"] < datetime.utcnow():
+        await delete_session(session_id)  # Auto-delete expired session
+        return None
+
+    return await get_user_by_id(session["user_id"])
+
+def auth_required(func):
+    """Decorator to protect routes and redirect unauthorized users to login."""
+    @wraps(func)
+    async def wrapper(request, *args, **kwargs):
+        user = await is_authenticated(request)
+        if not user:
+            return RedirectResponse(url="/login")
+
+        request.state.user = user
+        return await func(request, *args, **kwargs)
+    return wrapper
+
