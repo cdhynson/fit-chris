@@ -1,4 +1,6 @@
 *.venv*
+venv/
+RKCH/venv/
 *__pycache__*
 data/*
 !data/.gitkeep
