@@ -1,6 +1,6 @@
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, Response, HTTPException, status, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import uuid
 from typing import Dict
@@ -13,10 +13,27 @@ from database import (
     create_session,
     get_session,
     delete_session,
+    create_user,
 )
 
 # TODO: 1. create your own user
-INIT_USERS = {"alice": "pass123", "bob": "pass456", "chris": "password"}
+INIT_USERS = [
+    {"fullname": "Alice Johnson",   "username": "alice", 
+     "password": "pass123",         "location": "New York"},
+
+    {"fullname": "Bob Smith",       "username": "bob", 
+     "password": "pass456",         "location": "California"},
+
+    {"fullname": "Chris Evans",     "username": "chris", 
+     "password": "password",        "location": "Texas"}
+]
+
+
+
+# REMOVE ALL INSTANCES OF THIS FUNCTION
+def get_error_html(username: str) -> str:
+    error_html = read_html("./static/error.html")
+    return error_html.replace("{username}", username)
 
 
 @asynccontextmanager
@@ -34,6 +51,7 @@ async def lifespan(app: FastAPI):
         print("Shutdown completed")
 
 
+
 # Create FastAPI app with lifespan
 app = FastAPI(lifespan=lifespan)
 
@@ -48,9 +66,15 @@ def read_html(file_path: str) -> str:
 
 # def get_error_html(username: str) -> str:
 #     error_html = read_html("./static/error.html")
-#     return error_html.replace("{username}", username)
+#     return error_html.replace("{username}", username) 
 
 
+
+###########################################################
+## ----------------------------------------------------- ##
+## -------------------- LANDING PAGE ------------------- ##
+## ----------------------------------------------------- ##
+###########################################################
 @app.get("/")
 async def root():
     """Redirect users to /home"""
@@ -61,14 +85,61 @@ async def root():
 async def landing_page(request: Request):
     return read_html("./static/home.html")
 
+
+
+###########################################################
+## ----------------------------------------------------- ##
+## ---------------- SIGNUP FUNCTIONALITY --------------- ##
+## ----------------------------------------------------- ##
+###########################################################
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
     return read_html("./static/signup.html")
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def signup_page(request: Request):
-    return read_html("./static/dashboard.html")
+@app.get("/check-username")
+async def check_username(username: str):
+    """Checks if the username is already taken in the database."""
+    existing_user = await get_user_by_username(username)
 
+    return JSONResponse(content={"exists": existing_user is not None})
+
+@app.post("/signup")
+async def signup(
+    request: Request,
+    fullname: str = Form(...),
+    username: str = Form(...),
+    password: str = Form(...),
+    location: str = Form(...)
+):
+    """Handles user signup and redirects to login."""
+    existing_user = await get_user_by_username(username)
+    if existing_user:
+        return JSONResponse(
+            content={"error": "Username already exists."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Store password in plain text (⚠️ Only if you really don't want hashing)
+    new_user = await create_user(fullname, username, password, location)
+
+    if not new_user:
+        return JSONResponse(
+            content={"error": "User creation failed."},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    return JSONResponse(
+        content={"message": "Signup successful!", "redirect": "/login"},
+        status_code=status.HTTP_200_OK
+    )
+
+
+
+###########################################################
+## ----------------------------------------------------- ##
+## ---------------- LOGIN FUNCTIONALITY ---------------- ##
+## ----------------------------------------------------- ##
+###########################################################
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     """Show login if not logged in, or redirect to profile page"""
@@ -86,74 +157,87 @@ async def login_page(request: Request):
     # if not, show login page
     return read_html("./static/login.html")
 
+# @app.post("/login")
+# async def login(request: Request):
+#     """Validate credentials and create a new session if valid"""
+#     # TODO: 4. Get username and password from form data (handled via FastAPI's Form)
+#     # Extract form data manually
+#     form_data = await request.form()
+#     username = form_data.get("username")
+#     password = form_data.get("password")
+
+#     print(f"Attempting login for user: {username} with password: {password}")
+
+#     if not username or not password:
+#         return JSONResponse(
+#             content={"error": "Username and password are required."},
+#             status_code=status.HTTP_400_BAD_REQUEST
+#         )
+    
+#     # TODO: 5. Check if username exists and password matches
+#     # Retrieve user from the database using the username
+#     user = await get_user_by_username(username)
+
+#     print(f"Retrieved user from database: {user}")  # Debugging step
+
+#     # Ensure user exists and password matches
+#     if not user or user["password"] != password:
+#         print(f"Login failed: Incorrect password for user {username}")  # Debugging step
+#         return JSONResponse(
+#             content={"error": "Invalid username or password."},
+#             status_code=status.HTTP_403_FORBIDDEN
+#         )
+
+#     # Retrieve user ID from the user data
+#     user_id = user["id"]
+
+#     # TODO: 6. Create a new session
+#     session_id = str(uuid.uuid4())
+#     await create_session(user_id=user_id, session_id=session_id)
+
+#     # TODO: 7. Create response with:
+#     #   - redirect to /user/{username}
+#     #   - set cookie with session ID
+#     #   - return the response
+#     response = JSONResponse(content={"message": "Login successful!", "redirect": f"/user/{username}"})
+#     response.set_cookie(key="sessionId", value=session_id, httponly=True)
+#     # response = RedirectResponse(url=f"/user/{username}", status_code=status.HTTP_303_SEE_OTHER)
+#     # response.set_cookie(key="sessionId", value=session_id, httponly=True)
+
+#     print(f"User {username} successfully logged in with session ID: {session_id}")  # Debugging step
+#     return response
+
 @app.post("/login")
 async def login(request: Request):
-    """Validate credentials and create a new session if valid"""
-    # TODO: 4. Get username and password from form data (handled via FastAPI's Form)
-    # Extract form data manually
+    """Validate credentials and create a new session if valid."""
     form_data = await request.form()
     username = form_data.get("username")
     password = form_data.get("password")
 
-    print(f"Attempting login for user: {username} with password: {password}")
-
     if not username or not password:
-        return HTMLResponse(get_error_html("unknown"), status_code=status.HTTP_400_BAD_REQUEST)
-    
+        return JSONResponse(
+            content={"error": "Username and password are required."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
 
-
-    # TODO: 5. Check if username exists and password matches
-    # Retrieve user from the database using the username
     user = await get_user_by_username(username)
 
-    print(f"Retrieved user from database: {user}")  # Debugging step
-
-    # Ensure user exists and password matches
     if not user or user["password"] != password:
-        print(f"Login failed: Incorrect password for user {username}")  # Debugging step
-        return HTMLResponse(get_error_html(username), status_code=status.HTTP_403_FORBIDDEN)
+        return JSONResponse(
+            content={"error": "Invalid username or password."},
+            status_code=status.HTTP_403_FORBIDDEN
+        )
 
-    # Retrieve user ID from the user data
     user_id = user["id"]
-
-
-
-
-    # TODO: 6. Create a new session
     session_id = str(uuid.uuid4())
     await create_session(user_id=user_id, session_id=session_id)
 
-
-
-
-    # TODO: 7. Create response with:
-    #   - redirect to /user/{username}
-    #   - set cookie with session ID
-    #   - return the response
-    response = RedirectResponse(url=f"/user/{username}", status_code=status.HTTP_303_SEE_OTHER)
+    response = JSONResponse(
+        content={"message": "Login successful!", "redirect": f"/user/{username}"}
+    )
     response.set_cookie(key="sessionId", value=session_id, httponly=True)
 
-    print(f"User {username} successfully logged in with session ID: {session_id}")  # Debugging step
     return response
-
-
-@app.post("/logout")
-async def logout(request: Request):
-    """Clear session and redirect to login page"""
-    # TODO: 8. Create redirect response to /login
-    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    # TODO: 9. Delete sessionId cookie
-    session_id = request.cookies.get("sessionId")
-
-    if session_id:
-        await delete_session(session_id)
-
-    response.delete_cookie("sessionId")
-
-    # TODO: 10. Return response
-    return response
-
 
 @app.get("/user/{username}", response_class=HTMLResponse)
 async def user_page(username: str, request: Request):
@@ -182,8 +266,42 @@ async def user_page(username: str, request: Request):
         return HTMLResponse(get_error_html(username), status_code=status.HTTP_403_FORBIDDEN)
 
     # TODO: 14. If all valid, show profile page
-    return read_html("./static/profile.html")
+    return read_html("./static/dashboard.html")
 
+
+
+###########################################################
+## ----------------------------------------------------- ##
+## ------------ USER DASHBOARD FUNCTIONALITY ----------- ##
+## ----------------------------------------------------- ##
+###########################################################
+@app.get("/dashboard", response_class=HTMLResponse)
+async def signup_page(request: Request):
+    return read_html("./static/dashboard.html")
+
+
+
+###########################################################
+## ----------------------------------------------------- ##
+## ---------------- LOGOUT FUNCTIONALITY --------------- ##
+## ----------------------------------------------------- ##
+###########################################################
+@app.post("/logout")
+async def logout(request: Request):
+    """Clear session and redirect to login page"""
+    # TODO: 8. Create redirect response to /login
+    response = RedirectResponse(url="/home", status_code=status.HTTP_303_SEE_OTHER)
+
+    # TODO: 9. Delete sessionId cookie
+    session_id = request.cookies.get("sessionId")
+
+    if session_id:
+        await delete_session(session_id)
+
+    response.delete_cookie("sessionId")
+
+    # TODO: 10. Return response
+    return response
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="localhost", port=8000, reload=True)

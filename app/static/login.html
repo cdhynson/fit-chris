@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | FIT</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/login.js"></script>
 </head>
 <body class="login-page">
 
@@ -21,7 +22,10 @@
     </h1>
   
     <div class="login-container">
-        <form action="/login" method="POST">
+
+        <div id="error-message" class="error-popup" style="display: none;"></div>
+
+        <form id="login-form" action="/login" method="POST">
             <div class="input-group">
                 <label for="username">Email/Username</label>
                 <input type="text" id="username" name="username" required>
@@ -32,9 +36,14 @@
             </div>
             <button type="submit" class="login-btn">Login</button>
         </form>
+
+        <!--remove this if does nothing, was gonna add another box to table that ask and use for this reset-->
         <a href="/forgot" class="forgot-password">Forgot password?</a>
+        <!--------------------------------------------------------->
+
         <div class="separator"></div>
         <a href="/signup" class="signup-btn">Sign up</a>
+        <div id="error-message" style="color: red; display: none;"></div>
     </div>
 
 </body>

@@ -12,6 +12,7 @@ import time
 import json
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from database import get_session, get_user_by_id, delete_session
 
 def auth_required(func: Callable) -> Callable:
     """
@@ -36,64 +37,87 @@ def auth_required(func: Callable) -> Callable:
     if is_async:
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            # Extract request from args or kwargs
-            request = None
-            for arg in args:
-                if isinstance(arg, Request):
-                    request = arg
-                    break
-            
-            if not request and 'request' in kwargs:
-                request = kwargs['request']
-            
-            if not request:
-                raise HTTPException(status_code=500, detail="Request object not found in function arguments")
-            
-            # Get response from kwargs or create new one
-            response = kwargs.get('response', None)
-            
-            # Check if user is authenticated
-            
-            
-            # Set user in request state for later access
-            #request.state.user = 
-            
-            # Extend session
-            
-            
-            # Continue with the original function
+            # Extract the FastAPI request object from arguments
+            request = _extract_request(args, kwargs)
+
+            # Retrieve session ID from cookies
+            session_id = request.cookies.get("sessionId")
+
+            # If no session ID is found, redirect to login page
+            if not session_id:
+                return RedirectResponse(url="/login", status_code=303)
+
+            # Retrieve session details from the database
+            session = await get_session(session_id)
+
+            # If session is not found, redirect to login
+            if not session:
+                return RedirectResponse(url="/login", status_code=303)
+
+            # Retrieve user details from the database using session's user ID
+            user = await get_user_by_id(session["user_id"])
+
+            # If user is not found (e.g., deleted), delete session and redirect to login
+            if not user:
+                await delete_session(session_id)
+                return RedirectResponse(url="/login", status_code=303)
+
+            # Attach user details to the request state, making it accessible in the route function
+            request.state.user = user  
+
+            # Proceed with the original route function
             return await func(*args, **kwargs)
-        
+
         return async_wrapper
     else:
+        # If the function is synchronous, use a sync wrapper
         @wraps(func)
-        async def sync_wrapper(*args, **kwargs):
-            # Extract request from args or kwargs
-            request = None
-            for arg in args:
-                if isinstance(arg, Request):
-                    request = arg
-                    break
-            
-            if not request and 'request' in kwargs:
-                request = kwargs['request']
-            
-            if not request:
-                raise HTTPException(status_code=500, detail="Request object not found in function arguments")
-            
-            # Get response from kwargs or create new one
-            response = kwargs.get('response', None)
-            
-            # Check if user is authenticated
-            
-            
-            # Set user in request state for later access
-            #request.state.user = 
-            
-            # Extend session
-            
-            
-            # Continue with the original function
+        def sync_wrapper(*args, **kwargs):
+            # Extract the FastAPI request object from arguments
+            request = _extract_request(args, kwargs)
+
+            # Retrieve session ID from cookies
+            session_id = request.cookies.get("sessionId")
+
+            # If no session ID is found, redirect to login page
+            if not session_id:
+                return RedirectResponse(url="/login", status_code=303)
+
+            # Retrieve session details from the database
+            session = get_session(session_id)
+
+            # If session is not found, redirect to login
+            if not session:
+                return RedirectResponse(url="/login", status_code=303)
+
+            # Retrieve user details from the database using session's user ID
+            user = get_user_by_id(session["user_id"])
+
+            # If user is not found (e.g., deleted), delete session and redirect to login
+            if not user:
+                delete_session(session_id)
+                return RedirectResponse(url="/login", status_code=303)
+
+            # Attach user details to the request state, making it accessible in the route function
+            request.state.user = user  
+
+            # Proceed with the original route function
             return func(*args, **kwargs)
-        
+
         return sync_wrapper
+    
+
+def _extract_request(args, kwargs):
+    """
+    Extracts the FastAPI Request object from function arguments.
+    This ensures that the decorator can be applied to both sync and async routes.
+    """
+    for arg in args:
+        if isinstance(arg, Request):
+            return arg  # Return the found Request object
+
+    if "request" in kwargs:
+        return kwargs["request"]  # Return the Request object from kwargs
+
+    # Raise an error if the request object is missing
+    raise HTTPException(status_code=500, detail="Request object not found in function arguments")

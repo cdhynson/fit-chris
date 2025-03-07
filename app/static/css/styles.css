@@ -122,7 +122,26 @@ body {
     margin-left: 5px;
 }
 
+/* -------- ERROR POPUP ------- */
+.error-popup {
+    background-color: rgba(255, 0, 0, 0.8); /* Semi-transparent red */
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 5px;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 10px auto; /* Center above form */
+    display: none;
+    animation: fadeIn 0.5s ease-in-out;
+}
 
+/* Fade-in effect */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 /* ---------------------------------- */
 /* ---------------------------------- */
@@ -410,8 +429,41 @@ body.login-page {
 .signup-btn:hover {
     background: #bbb;
 }
+/* ------ U/P VALIDATION SECTION ------ */
+.username-status {
+    font-size: 14px;
+    margin-top: 5px;
+}
 
+.valid {
+    color: green;
+    font-weight: bold;
+}
 
+.invalid {
+    color: red;
+    font-weight: bold;
+}
+
+#password-requirements {        
+    margin-top: 10px;
+    font-size: 14px;
+    color: red;
+}
+
+#password-requirements p {
+    margin: 2px 0;
+}
+
+.valid {
+    color: green;
+    font-weight: bold;
+}
+
+.invalid {
+    color: red;
+    font-weight: bold;
+}
 
 
 

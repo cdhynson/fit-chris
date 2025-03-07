@@ -1,48 +1,43 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Welcome</title>
-    <style>
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px;
-      }
-      .logout-form {
-        margin: 0;
-      }
-      .logout-button {
-        padding: 8px 16px;
-        background-color: #f44336;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .logout-button:hover {
-        background-color: #d32f2f;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <h1 id="welcome-message">Welcome!</h1>
-      <form class="logout-form" action="/logout" method="POST">
-        <button class="logout-button" type="submit">Logout</button>
-      </form>
-    </div>
-  </body>
-  <script>
-    window.onload = function () {
-      // Get the username from the URL path
-      const path = window.location.pathname;
-      const username = path.split('/user/')[1];
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | FIT</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <a href="/dashboard">FIT</a>
+        </div>
+        <nav class="nav-buttons">
+            <a href="/dashboard" class="btn-profile">
+                <img src="/static/images/profile.png" alt="Profile">
+            </a>
+        </nav>
+    </header>
 
-      // Update the welcome message
-      document.getElementById(
-        'welcome-message'
-      ).textContent = `Welcome, ${username}!`;
-    };
-  </script>
+
+
+
+
+
+
+
+
+
+
+    
+    <div class="footer-container">
+        <div class="footer">
+            <div class="footer-text">
+                <span class="highlight">F</span><span class="normal">ashion.</span> 
+                <span class="highlight">I</span><span class="normal">ntelligence.</span> 
+                <span class="highlight">T</span><span class="normal">echnology.</span>
+            </div>
+        </div>
+    </div>
+
+</body>
 </html>

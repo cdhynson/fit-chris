@@ -13,12 +13,10 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 class DatabaseConnectionError(Exception):
     """Custom exception for database connection failures"""
 
     pass
-
 
 def get_db_connection(
     max_retries: int = 12,  # 12 retries = 1 minute total (12 * 5 seconds)
@@ -78,8 +76,10 @@ async def setup_database(initial_users: dict = None):
         "users": """
             CREATE TABLE users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                fullname VARCHAR(255) NOT NULL,
                 username VARCHAR(255) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
+                location VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """,
@@ -122,11 +122,16 @@ async def setup_database(initial_users: dict = None):
         # Insert initial users if provided
         if initial_users:
             try:
-                insert_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
-                for username, password in initial_users.items():
-                    cursor.execute(insert_query, (username, password))
+                insert_query = """
+                    INSERT INTO users (fullname, username, password, location) 
+                    VALUES (%s, %s, %s, %s) 
+                    ON DUPLICATE KEY UPDATE username=username
+                """
+                for user in initial_users:
+                    cursor.execute(insert_query, (user["fullname"], user["username"], user["password"], user["location"]))
                 connection.commit()
                 logger.info(f"Inserted {len(initial_users)} initial users")
+                
             except Error as e:
                 logger.error(f"Error inserting initial users: {e}")
                 raise
@@ -151,7 +156,7 @@ async def get_user_by_username(username: str) -> Optional[dict]:
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT id, fullname, username, password, location FROM users WHERE username = %s", (username,))
         return cursor.fetchone()
     finally:
         if cursor:
@@ -236,6 +241,33 @@ async def delete_session(session_id: str) -> bool:
         cursor.execute("DELETE FROM sessions WHERE id = %s", (session_id,))
         connection.commit()
         return True
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+
+
+
+
+async def create_user(fullname: str, username: str, password: str, location: str) -> bool:
+    """Creates a new user and saves to the database without password hashing."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO users (fullname, username, password, location) VALUES (%s, %s, %s, %s)",
+            (fullname, username, password, location)
+        )
+        connection.commit()
+        return True
+    except Error as e:
+        logger.error(f"Error inserting new user: {e}")
+        return False
     finally:
         if cursor:
             cursor.close()

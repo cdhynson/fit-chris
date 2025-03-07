@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | FIT</title>
+    <title>Sign Up | FIT</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/signup.js"></script>
 </head>
 <body class="login-page">
 
@@ -21,27 +22,37 @@
     </h1>
   
     <div class="login-container">
-        <form action="/login" method="POST">
+        <form id="signup-form" action="/signup" method="POST">
             <div class="input-group">
                 <label for="fullname">Name</label>
                 <input type="text" id="fullname" name="fullname" required>
             </div>
             <div class="input-group">
+                <label for="location">Location</label>
+                <input type="location" id="location" name="location" required>
+            </div>
+            <div class="input-group">
                 <label for="username">Email/Username</label>
                 <input type="text" id="username" name="username" required>
+                <p id="username-check" class="username-status"></p>
             </div>
             <div class="input-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
-            </div>
-            <div class="input-group">
-                <label for="location">Location</label>
-                <input type="location" id="location" name="location" required>
+
+                <div id="password-requirements">
+                    <p id="length" class="invalid">❌ At least 6 characters</p>
+                    <p id="uppercase" class="invalid">❌ At least 1 capital letter</p>
+                    <p id="number" class="invalid">❌ At least 1 number</p>
+                    <p id="special" class="invalid">❌ No special characters (!@#$%^&*)</p>
+                    <p id="space" class="invalid">❌ No spaces</p>
+                </div>
             </div>
             <button type="submit" class="login-btn">Sign Up</button>
         </form>
         <div class="separator"></div>
         <a href="/login" class="signup-btn">Already Have an Account?</a>
+        <div id="error-message" style="color: red; display: none;"></div>
     </div>
 
 </body>
