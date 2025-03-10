@@ -18,18 +18,72 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-document.addEventListener("DOMContentLoaded", checkEmptyDeviceList);
+document.addEventListener("DOMContentLoaded", async function () {
+    const deviceList = document.getElementById("device-list");
+    const removeDeviceDropdown = document.getElementById("remove-device-dropdown");
+
+    async function fetchDevices() {
+        try {
+            console.log("✅ Fetching devices...");
+            const response = await fetch("/devices"); // Get devices from backend
+
+            if (response.ok) {
+                const devices = await response.json();
+                console.log("✅ Devices received:", devices); // Debugging
+
+                deviceList.innerHTML = ""; // Clear list before repopulating
+                removeDeviceDropdown.innerHTML = '<option value="">Select Device</option>'; // Reset dropdown
+
+                if (devices.length === 0) {
+                    console.log("❌ No devices found.");
+                }
+
+                devices.forEach(device => addDeviceToUI(device.name, device.serial));
+            } else {
+                console.error("❌ Failed to fetch devices:", await response.text());
+            }
+        } catch (error) {
+            console.error("❌ Error fetching devices:", error);
+        }
+    }
+
+    function addDeviceToUI(deviceName, serial) {
+        console.log(`✅ Adding Device: ${deviceName}, Serial: ${serial}`); // Debugging
+
+        // ✅ Add Device to List
+        const deviceElement = document.createElement("div");
+        deviceElement.classList.add("device-item");
+        deviceElement.innerHTML = `
+            <img src="/static/images/device.png" alt="Device">
+            <h3>${deviceName}</h3>
+            <p class="device-id">Serial: ${serial}</p>
+        `;
+        deviceList.appendChild(deviceElement);
+
+        // ✅ Add Device to Dropdown
+        const option = document.createElement("option");
+        option.value = serial;
+        option.textContent = deviceName;
+        removeDeviceDropdown.appendChild(option);
+    }
+
+    // ✅ Load Devices on Page Load
+    fetchDevices();
+    adjustDeviceContainerHeight();
+    // checkEmptyDeviceList();
+});
+
+
+
+
+
+
+
+
 
 document.addEventListener("DOMContentLoaded", async function () {
     const greetingElement = document.getElementById("user-name");
     const greetingTextElement = document.getElementById("greeting-text");
-
-    const addDeviceBtn = document.getElementById("add-device-btn");
-    const devicePopup = document.getElementById("device-popup");
-    const submitDeviceBtn = document.getElementById("submit-device");
-    const cancelDeviceBtn = document.getElementById("cancel-device");
-    const deviceList = document.getElementById("device-list");
-    const removeDeviceDropdown = document.getElementById("remove-device-dropdown");
 
     function getTimeBasedGreeting() {
         const currentHour = new Date().getHours();
@@ -55,57 +109,146 @@ document.addEventListener("DOMContentLoaded", async function () {
     } catch (error) {
         console.error("Failed to fetch user info:", error);
     }
+});
 
-    // Open Popup
+
+
+
+document.addEventListener("DOMContentLoaded", async function () {
+    const addDeviceBtn = document.getElementById("add-device-btn");
+    const devicePopup = document.getElementById("device-popup");
+    const submitDeviceBtn = document.getElementById("submit-device");
+    const cancelDeviceBtn = document.getElementById("cancel-device");
+    const deviceList = document.getElementById("device-list");
+    const removeDeviceDropdown = document.getElementById("remove-device-dropdown");
+
+    // ✅ Open the Add Device Popup
     addDeviceBtn.addEventListener("click", function () {
+        console.log("🔵 Opening device popup...");
         devicePopup.style.display = "block";
     });
 
-    // Close Popup
+    // ✅ Close the Add Device Popup
     cancelDeviceBtn.addEventListener("click", function () {
+        console.log("🔴 Closing device popup...");
         devicePopup.style.display = "none";
     });
 
-    // Submit Device
-    submitDeviceBtn.addEventListener("click", function () {
-        const deviceName = document.getElementById("device-name").value.trim();
-        const deviceId = document.getElementById("device-id").value.trim();
 
-        if (deviceName === "" || deviceId === "") {
+
+    // ✅ Fetch Devices from the Database on Page Load
+    async function fetchDevices() {
+        try {
+            console.log("✅ Fetching devices...");
+            const response = await fetch("/devices");
+
+            if (response.ok) {
+                const devices = await response.json();
+                console.log("✅ Devices received:", devices);
+
+                deviceList.innerHTML = ""; // Clear list before repopulating
+                removeDeviceDropdown.innerHTML = '<option value="">Select Device</option>'; // Reset dropdown
+
+                if (devices.length === 0) {
+                    console.log("❌ No devices found.");
+                }
+
+                devices.forEach(device => addDeviceToUI(device.name, device.serial));
+            } else {
+                console.error("❌ Failed to fetch devices:", await response.text());
+            }
+        } catch (error) {
+            console.error("❌ Error fetching devices:", error);
+        }
+    }
+
+    // ✅ Add a New Device to the Database and UI
+    submitDeviceBtn.addEventListener("click", async function () {
+        const deviceName = document.getElementById("device-name").value.trim();
+        const serial = document.getElementById("device-id").value.trim();
+
+        if (deviceName === "" || serial === "") {
             alert("Please fill in all fields.");
             return;
         }
 
-        // Add Device to Device Container
+        try {
+            const response = await fetch("/devices", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: deviceName, serial: serial })
+            });
+
+            if (response.ok) {
+                addDeviceToUI(deviceName, serial);
+                alert("✅ Device added successfully!");
+                fetchDevices(); // Refresh device list
+            } else {
+                alert("❌ Failed to add device.");
+            }
+        } catch (error) {
+            console.error("❌ Error adding device:", error);
+        }
+
+        devicePopup.style.display = "none";
+        document.getElementById("device-name").value = "";
+        document.getElementById("device-id").value = "";
+    });
+
+    // ✅ Function to Add Device to the UI
+    function addDeviceToUI(deviceName, serial) {
+        console.log(`✅ Adding Device: ${deviceName}, Serial: ${serial}`);
+
+        // ✅ Create device card
         const deviceElement = document.createElement("div");
         deviceElement.classList.add("device-item");
         deviceElement.innerHTML = `
             <img src="/static/images/device.png" alt="Device">
             <h3>${deviceName}</h3>
-            <p class="device-id">Device ID: ${deviceId}</p>
+            <p class="device-id">Serial: ${serial}</p>
         `;
-
         deviceList.appendChild(deviceElement);
 
-        // Add Device to Dropdown
+        // ✅ Add Device to Dropdown
         const option = document.createElement("option");
-        option.value = deviceId;
+        option.value = serial;
         option.textContent = deviceName;
         removeDeviceDropdown.appendChild(option);
+    }
 
-        // Close Popup
-        devicePopup.style.display = "none";
+    // ✅ Load Devices on Page Load
+    fetchDevices();
+    adjustDeviceContainerHeight();
+});
 
-        // Clear Input Fields
-        document.getElementById("device-name").value = "";
-        document.getElementById("device-id").value = "";
 
-        checkEmptyDeviceList();
-        adjustDeviceContainerHeight();
-    });
-    
-    checkEmptyDeviceList();
-}); // <-- Closing the DOMContentLoaded event listener
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function adjustDeviceContainerHeight() {
     const deviceContainer = document.getElementById("device-container");
@@ -121,27 +264,27 @@ function adjustDeviceContainerHeight() {
     }
 }
 
-function checkEmptyDeviceList() {
-    const deviceContainer = document.getElementById("device-container");
-    const deviceList = document.getElementById("device-list");
-    let emptyMessage = document.querySelector("#device-container .empty-message");
+// function checkEmptyDeviceList() {
+//     const deviceContainer = document.getElementById("device-container");
+//     const deviceList = document.getElementById("device-list");
+//     let emptyMessage = document.querySelector("#device-container .empty-message");
 
-    // Check if there are any actual device items inside the device list
-    if (deviceList.children.length === 0) {
-        if (!emptyMessage) {
-            emptyMessage = document.createElement("p");
-            emptyMessage.classList.add("empty-message");
-            emptyMessage.textContent = "No devices added yet.";
-            deviceContainer.appendChild(emptyMessage);
-        }
-        deviceContainer.style.justifyContent = "center"; 
-        deviceContainer.style.alignItems = "center";
-    } else {
-        // ✅ **If devices exist, remove the empty message**
-        if (emptyMessage) {
-            emptyMessage.remove();
-        }
-        deviceContainer.style.justifyContent = "flex-start"; 
-        deviceContainer.style.alignItems = "flex-start";
-    }
-}
+//     // Check if there are any actual device items inside the device list
+//     if (deviceList.children.length === 0) {
+//         if (!emptyMessage) {
+//             emptyMessage = document.createElement("p");
+//             emptyMessage.classList.add("empty-message");
+//             emptyMessage.textContent = "No devices added yet.";
+//             deviceContainer.appendChild(emptyMessage);
+//         }
+//         deviceContainer.style.justifyContent = "center"; 
+//         deviceContainer.style.alignItems = "center";
+//     } else {
+//         // ✅ **If devices exist, remove the empty message**
+//         if (emptyMessage) {
+//             emptyMessage.remove();
+//         }
+//         deviceContainer.style.justifyContent = "flex-start"; 
+//         deviceContainer.style.alignItems = "flex-start";
+//     }
+// }

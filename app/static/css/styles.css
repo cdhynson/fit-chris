@@ -573,7 +573,7 @@ body.login-page {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
-    align-items: flex-start;
+    align-items: center;
     gap: 20px;
     border: 3px solid black;
     padding: 30px;
@@ -583,7 +583,6 @@ body.login-page {
     background-color: white;
     border-radius: 10px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-    position: relative; 
 }
 
 .empty-message {
@@ -598,27 +597,32 @@ body.login-page {
 }
 
 .device-item {
+    width: 200px; /* Set a fixed width */
+    height: 250px; /* Set a fixed height */
+    background-color: #f8f8f8; /* Light background */
+    border-radius: 10px;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    text-align: center;
     display: flex;
     flex-direction: column;
-    align-items: center;  /* Centers items horizontally */
-    justify-content: center; /* Centers content vertically */
-    text-align: center; /* Ensures text is centered */
-    padding: 10px;
-    border-radius: 10px;
-    background-color: #f9f9f9;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-    width: 200px;
-    height: auto;
-    border: #000000 2px solid;
+    justify-content: center;
+    align-items: center;
 }
 
-/* Center the image */
 .device-item img {
-    margin-top: 5px; 
-    width: 180px;
-    height: auto;
-    display: block; /* Removes extra spacing below image */
-    margin-bottom: 6px; /* Adds spacing below the image */
+    width: 80px; /* Adjust image size */
+    height: 80px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+#device-list {
+    display: flex; 
+    flex-wrap: wrap; /* Ensures items move to the next line if needed */
+    justify-content: flex-start; /* Aligns items from left to right */
+    gap: 20px; /* Space between devices */
+    width: 100%; /* Ensures it takes full width of the container */
 }
 
 /* Center the text */

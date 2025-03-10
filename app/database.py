@@ -3,8 +3,9 @@ import time
 import logging
 import mysql.connector
 from datetime import datetime, timedelta
+from fastapi import Request
 
-from typing import Optional
+from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from mysql.connector import Error
 
@@ -67,7 +68,7 @@ def get_db_connection(
     )
 
 
-async def setup_database(initial_users: dict = None):
+async def setup_database(initial_users: list = None, initial_devices: list = None):
     """Creates user and session tables and populates initial user data if provided."""
     connection = None
     cursor = None
@@ -93,6 +94,16 @@ async def setup_database(initial_users: dict = None):
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """,
+        "devices": """
+            CREATE TABLE devices (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                serial VARCHAR(255) NOT NULL UNIQUE,
+                user_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """
     }
 
     try:
@@ -101,8 +112,7 @@ async def setup_database(initial_users: dict = None):
         cursor = connection.cursor()
 
         # Drop and recreate tables one by one
-        for table_name in ["sessions", "users"]:
-            # Drop table if exists
+        for table_name in ["sessions", "devices", "users"]:
             logger.info(f"Dropping table {table_name} if exists...")
             cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
             connection.commit()
@@ -136,6 +146,32 @@ async def setup_database(initial_users: dict = None):
 
             except Error as e:
                 logger.error(f"Error inserting initial users: {e}")
+                raise
+
+        # Insert initial devices if provided
+        if initial_devices:
+            try:
+                # Fetch user IDs to correctly link devices
+                cursor.execute("SELECT id, username FROM users")
+                user_map = {row[1]: row[0] for row in cursor.fetchall()}  # Map usernames to user IDs
+
+                insert_device_query = """
+                    INSERT INTO devices (name, serial, user_id)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE serial=serial
+                """
+                for device in initial_devices:
+                    user_id = user_map.get(device["username"])  # Get user_id from username
+                    if user_id:
+                        cursor.execute(insert_device_query, (device["name"], device["serial"], user_id))
+                    else:
+                        logger.warning(f"Skipping device {device['name']} - User {device['username']} not found")
+
+                connection.commit()
+                logger.info(f"Inserted {len(initial_devices)} initial devices")
+
+            except Error as e:
+                logger.error(f"Error inserting initial devices: {e}")
                 raise
 
     except Exception as e:
@@ -279,3 +315,110 @@ async def create_user(fullname: str, username: str, password: str, location: str
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async def get_user_by_session(session_id: str) -> Optional[dict]:
+    """Retrieve user information based on session ID."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        query = """
+            SELECT u.id, u.fullname, u.username, u.location
+            FROM users u
+            JOIN sessions s ON u.id = s.user_id
+            WHERE s.id = %s AND s.expires_at > NOW()
+        """
+        cursor.execute(query, (session_id,))
+        user = cursor.fetchone()
+
+        if user:
+            print(f"✅ Found user {user['username']} for session {session_id}")  # Debugging
+        else:
+            print(f"❌ No user found for session {session_id}")  # Debugging
+
+        return user
+
+    except mysql.connector.Error as e:
+        print(f"❌ Error retrieving user from session: {e}")
+        return None
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+
+async def get_devices_by_user_id(user_id: int) -> List[Dict]:
+    """Retrieve all devices associated with a given user ID."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        query = "SELECT id, name, serial FROM devices WHERE user_id = %s"
+        cursor.execute(query, (user_id,))
+        devices = cursor.fetchall()
+
+        print(f"✅ Retrieved {len(devices)} devices for user ID {user_id}")  # Debugging
+        return devices
+
+    except mysql.connector.Error as e:
+        print(f"❌ Error retrieving devices: {e}")
+        return []
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+async def create_device(user_id: int, name: str, serial: str):
+    """Insert a new device into the database for the given user."""
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = "INSERT INTO devices (name, serial, user_id) VALUES (%s, %s, %s)"
+        cursor.execute(query, (name, serial, user_id))
+        connection.commit()
+        print(f"✅ Device {name} added for user ID {user_id}")  # Debugging
+
+    except mysql.connector.Error as e:
+        print(f"❌ Error adding device: {e}")
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+

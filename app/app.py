@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 import uuid
 from typing import Dict
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 
 from decorators import auth_required
 
@@ -16,6 +17,9 @@ from database import (
     get_session,
     delete_session,
     create_user,
+    get_user_by_session,
+    get_devices_by_user_id,
+    create_device,
 )
 
 # TODO: 1. create your own user
@@ -30,7 +34,18 @@ INIT_USERS = [
      "password": "password",        "location": "Texas"}
 ]
 
+INIT_DEVICES = [
+    {"name": "Alice's Laptop", "serial": "A123", "username": "alice"},
 
+    {"name": "Bob's Tablet", "serial": "B789", "username": "bob"},
+    
+    {"name": "Chris' PC", "serial": "C101", "username": "chris"},
+    {"name": "Chris' Smartwatch", "serial": "C202", "username": "chris"}
+]
+
+class DeviceCreate(BaseModel):
+    name: str
+    serial: str
 
 # REMOVE ALL INSTANCES OF THIS FUNCTION
 def get_error_html(username: str) -> str:
@@ -46,7 +61,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup: Setup resources
     try:
-        await setup_database(INIT_USERS)  # Make sure setup_database is async
+        await setup_database(INIT_USERS, INIT_DEVICES)  # Make sure setup_database is async
         print("Database setup completed")
         yield
     finally:
@@ -65,12 +80,28 @@ def read_html(file_path: str) -> str:
     with open(file_path, "r") as f:
         return f.read()
 
+# @app.get("/user-info")
+# @auth_required
+# async def user_info(request: Request):
+#     """Returns the logged-in user's full name."""
+#     user = request.state.user
+#     return JSONResponse(content={"fullname": user["fullname"]})
+
 @app.get("/user-info")
 @auth_required
 async def user_info(request: Request):
-    """Returns the logged-in user's full name."""
-    user = request.state.user
-    return JSONResponse(content={"fullname": user["fullname"]})
+    """Return logged-in user's full name"""
+    session_id = request.cookies.get("sessionId")
+
+    if not session_id:
+        return JSONResponse(content={"error": "User not authenticated"}, status_code=401)
+
+    user = await get_user_by_session(session_id)
+    if not user:
+        return JSONResponse(content={"error": "Invalid session"}, status_code=401)
+
+    return {"fullname": user["fullname"]}
+
 
 # def get_error_html(username: str) -> str:
 #     error_html = read_html("./static/error.html")
@@ -228,6 +259,8 @@ async def user_page(username: str, request: Request):
 
 
 
+
+
 ###########################################################
 ## ----------------------------------------------------- ##
 ## ------------ USER DASHBOARD FUNCTIONALITY ----------- ##
@@ -248,7 +281,49 @@ async def signup_page(request: Request):
 @app.get("/profile", response_class=HTMLResponse)
 @auth_required
 async def profile_page(request: Request):
-    return read_html("./static/profile.html")
+    session_id = request.cookies.get("sessionId")
+
+    # ✅ If no session, redirect to login
+    if not session_id:
+        return RedirectResponse(url="/login")
+
+    # ✅ Check if session is valid
+    user = await get_user_by_session(session_id)
+    if not user:
+        return RedirectResponse(url="/login")
+
+    return HTMLResponse(open("./static/profile.html").read())
+
+# ✅ Fetch all devices for the logged-in user
+@app.get("/devices")
+async def get_devices(request: Request):
+    session_id = request.cookies.get("sessionId")
+
+    if not session_id:
+        return JSONResponse(content={"error": "User not authenticated"}, status_code=401)
+
+    user = await get_user_by_session(session_id)
+    if not user:
+        return JSONResponse(content={"error": "Invalid session"}, status_code=401)
+
+    devices = await get_devices_by_user_id(user["id"])  # Fetch devices for the user
+    return devices  # Return devices in JSON format
+
+# ✅ Add a new device for the logged-in user
+@app.post("/devices")
+async def add_device(request: Request, device: DeviceCreate):
+    session_id = request.cookies.get("sessionId")
+
+    if not session_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    user = await get_user_by_session(session_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    # ✅ Store the device in the database
+    await create_device(user_id=user["id"], name=device.name, serial=device.serial)
+    return {"message": "Device added successfully"}
 
 
 
