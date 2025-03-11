@@ -103,7 +103,7 @@ async def setup_database(initial_users: list = None, initial_devices: list = Non
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
-        """
+        """,
 
         "wardrobe": """
             CREATE TABLE wardrobe (
