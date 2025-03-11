@@ -7,6 +7,8 @@ from typing import Dict
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
+import requests
+from datetime import datetime
 from decorators import auth_required
 
 from database import (
@@ -20,6 +22,11 @@ from database import (
     get_user_by_session,
     get_devices_by_user_id,
     create_device,
+    get_wardrobe_items,
+    create_wardrobe_item,
+    update_wardrobe_item,
+    delete_wardrobe_item,
+
 )
 
 # TODO: 1. create your own user
@@ -349,5 +356,269 @@ async def logout(request: Request):
     # TODO: 10. Return response
     return response
 
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="localhost", port=8000, reload=True)
+
+@app.get("/wardrobe", response_class=HTMLResponse)
+@auth_required
+async def wardrobe_page(request: Request):
+    return read_html("./static/wardrobe.html")
+###########################################################
+## ----------------------------------------------------- ##
+## ---------------- Weather API --------------- ##
+## ----------------------------------------------------- ##
+###########################################################
+
+
+@app.get("/api/weather")
+async def weather(request: Request):
+    
+    session_id = request.cookies.get("sessionId")
+    if not session_id:
+        return RedirectResponse(url="/login")
+
+    session = await get_session(session_id)
+    if not session:
+        return RedirectResponse(url="/login")
+
+    user = await get_user_by_id(session["user_id"])
+    if not user:
+        return RedirectResponse(url="/login")
+
+
+    city = user.get("location", "San Diego")
+
+   
+    try:
+        nominatim_url = "https://nominatim.openstreetmap.org/search"
+        nom_params = {"q": city, "format": "json"}
+        nom_response = requests.get(nominatim_url, params=nom_params, headers={"User-Agent": "FIT-App"})
+        nom_data = nom_response.json()
+        if not nom_data:
+            return {"error": f"No location found for {city}"}
+        lat = nom_data[0]["lat"]
+        lon = nom_data[0]["lon"]
+    except Exception as e:
+        return {"error": f"Error fetching geolocation: {str(e)}"}
+
+    
+    try:
+        points_url = f"https://api.weather.gov/points/{lat},{lon}"
+        points_resp = requests.get(points_url, headers={"User-Agent": "FIT-App"})
+        points_data = points_resp.json()
+        daily_forecast_url = points_data["properties"]["forecast"]  
+    except Exception as e:
+        return {"error": f"Error fetching forecast URL: {str(e)}"}
+
+    
+    try:
+        forecast_resp = requests.get(daily_forecast_url, headers={"User-Agent": "FIT-App"})
+        forecast_data = forecast_resp.json()
+        periods = forecast_data["properties"]["periods"] 
+
+        if not periods:
+            return {"error": "No forecast periods available."}
+
+        first_period = periods[0]
+        temperature = first_period["temperature"]  
+        icon = first_period["icon"]
+        unit = "F"
+
+    except Exception as e:
+        return {"error": f"Error fetching daily forecast: {str(e)}"}
+
+   
+    return {
+        "city": city,
+        "temperature": temperature,
+        "unit": unit,
+        "icon": icon
+    }
+
+AI_API_EMAIL = "rkalyanakumar@ucsd.edu"      
+AI_API_PID = "A17566293"             
+
+@app.post("/api/recommendation")
+async def recommendation(request: Request):
+   
+    body = await request.json()
+    prompt = body.get("prompt", "What should I wear today?")
+    
+    headers = {
+        "email": AI_API_EMAIL, 
+        "pid": AI_API_PID,     
+        "Content-Type": "application/json"
+    }
+    ai_api_url = "https://ece140-wi25-api.frosty-sky-f43d.workers.dev/api/v1/ai/complete"
+    payload = {"prompt": prompt}
+    
+    response = requests.post(ai_api_url, headers=headers, json=payload)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="AI API error")
+    
+    suggestion = response.json()
+    print("External AI API response:", suggestion)
+    
+    if suggestion.get("success") and "result" in suggestion and "response" in suggestion["result"]:
+        suggestion_text = suggestion["result"]["response"]
+    else:
+        suggestion_text = str(suggestion)
+    
+    return {"message": suggestion_text}
+
+
+
+
+
+@app.post("/api/ai/image")
+async def generate_image(request: Request):
+   
+    body = await request.json()
+    prompt = body.get("prompt", "A stylish outfit")
+    width = body.get("width", 512)
+    height = body.get("height", 512)
+
+    headers = {
+        "email": AI_API_EMAIL,
+        "pid": AI_API_PID,
+        "Content-Type": "application/json"
+    }
+    image_api_url = "https://ece140-wi25-api.frosty-sky-f43d.workers.dev/api/v1/ai/image"
+    payload = {"prompt": prompt, "width": width, "height": height}
+
+    response = requests.post(image_api_url, headers=headers, json=payload)
+    
+   
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="AI Image API error: " + response.text)
+    
+    try:
+        json_data = response.json()
+    except Exception as e:
+        
+        print("Error decoding JSON from AI Image API:", e)
+        print("Response text:", response.text)
+        raise HTTPException(status_code=500, detail="Error decoding JSON from AI Image API")
+    
+    return json_data
+
+###########################################################
+## ---------------- WARDROBE CRUD ENDPOINTS -------------- ##
+###########################################################
+
+@app.post("/api/wardrobe")
+async def add_clothing(request: Request):
+    """
+    Add a new clothing item to the wardrobe for the currently logged-in user.
+    Expects a JSON body with "name" and "type".
+    """
+    session_id = request.cookies.get("sessionId")
+    if not session_id:
+        return RedirectResponse(url="/login")
+    
+    session = await get_session(session_id)
+    if not session:
+        return RedirectResponse(url="/login")
+    
+    user = await get_user_by_id(session["user_id"])
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    body = await request.json()
+    name = body.get("name")
+    type_ = body.get("type")
+    if not name or not type_:
+        raise HTTPException(status_code=400, detail="Name and type are required")
+    
+    new_item = await create_wardrobe_item(user["id"], name, type_)
+    if not new_item:
+        raise HTTPException(status_code=500, detail="Error creating wardrobe item")
+    
+    
+    if "created_at" in new_item and isinstance(new_item["created_at"], datetime):
+        new_item["created_at"] = new_item["created_at"].isoformat()
+    
+    return JSONResponse(content=new_item, status_code=201)
+
+
+@app.get("/api/wardrobe")
+async def get_wardrobe(request: Request):
+    """
+    Retrieve all wardrobe items for the currently logged-in user.
+    """
+    session_id = request.cookies.get("sessionId")
+    if not session_id:
+        return RedirectResponse(url="/login")
+    
+    session = await get_session(session_id)
+    if not session:
+        return RedirectResponse(url="/login")
+    
+    user = await get_user_by_id(session["user_id"])
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Retrieve wardrobe items from the database for the current user.
+    items = await get_wardrobe_items(user["id"])
+    
+    # Convert datetime fields (e.g., created_at) to ISO strings.
+    for item in items:
+        if "created_at" in item and isinstance(item["created_at"], datetime):
+            item["created_at"] = item["created_at"].isoformat()
+    
+    return JSONResponse(content=items)
+
+
+@app.put("/api/wardrobe/{item_id}")
+async def update_clothing(item_id: int, request: Request):
+    """
+    Update an existing clothing item for the logged-in user.
+    Expects a JSON body with "name" and/or "type".
+    """
+    session_id = request.cookies.get("sessionId")
+    if not session_id:
+        return RedirectResponse(url="/login")
+    
+    session = await get_session(session_id)
+    if not session:
+        return RedirectResponse(url="/login")
+    
+    user = await get_user_by_id(session["user_id"])
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    body = await request.json()
+    name = body.get("name")
+    type_ = body.get("type")
+    
+    updated_item = await update_wardrobe_item(item_id, user["id"], name, type_)
+    if not updated_item:
+        raise HTTPException(status_code=404, detail="Item not found or nothing to update")
+    
+    if "created_at" in updated_item and isinstance(updated_item["created_at"], datetime):
+        updated_item["created_at"] = updated_item["created_at"].isoformat()
+    
+    return JSONResponse(content=updated_item)
+
+
+
+@app.delete("/api/wardrobe/{item_id}")
+async def delete_clothing(item_id: int, request: Request):
+    """
+    Delete a clothing item for the logged-in user.
+    """
+    session_id = request.cookies.get("sessionId")
+    if not session_id:
+        return RedirectResponse(url="/login")
+    
+    session = await get_session(session_id)
+    if not session:
+        return RedirectResponse(url="/login")
+    
+    user = await get_user_by_id(session["user_id"])
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    success = await delete_wardrobe_item(item_id, user["id"])
+    if not success:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return JSONResponse(content={"detail": "Item deleted"})
+

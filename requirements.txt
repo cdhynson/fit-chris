@@ -4,3 +4,4 @@ python-multipart
 uuid
 mysql-connector-python
 python-dotenv
+requests

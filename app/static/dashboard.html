@@ -5,6 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard | FIT</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        /* Basic Reset */
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+    
+        body {
+          font-family: Arial, sans-serif;
+          background: #f5f5f5;
+          color: #333;
+        }
+    
+        /* Header */
+        header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: white;
+          padding: 1rem 2rem;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    
+        .logo {
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: #222;
+        }
+    
+        .user-info {
+          font-size: 1rem;
+          color: #444;
+        }
+    
+        /* Page Title */
+        .dashboard-title {
+          margin: 1rem 2rem;
+          font-size: 2rem;
+          font-weight: bold;
+        }
+    
+        /* Main Container: Two columns (top row) */
+        .top-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin: 1rem 2rem;
+          gap: 1rem;
+        }
+    
+        .temp-hum-container, .weather-forecast-container {
+          flex: 1 1 300px;
+          background: white;
+          border-radius: 8px;
+          padding: 1rem;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    
+        .temp-hum-container h2,
+        .weather-forecast-container h2 {
+          margin-bottom: 1rem;
+          font-size: 1.2rem;
+        }
+    
+        /* Example placeholder chart area */
+        .chart-placeholder {
+          width: 100%;
+          height: 200px;
+          background: #e3e3e3;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          margin-top: 1rem;
+          font-weight: bold;
+          color: #666;
+        }
+    
+        /* Weather forecast details */
+        .weather-location {
+          font-weight: bold;
+          font-size: 1.1rem;
+          margin-bottom: 0.5rem;
+        }
+    
+        .current-temp {
+          font-size: 2rem;
+          font-weight: bold;
+          margin-bottom: 0.5rem;
+        }
+    
+        /* Bottom row: two columns */
+        .bottom-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin: 1rem 2rem;
+          gap: 1rem;
+        }
+    
+        .suggested-outfit-container,
+        .assistant-container {
+          flex: 1 1 300px;
+          background: white;
+          border-radius: 8px;
+          padding: 1rem;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    
+        .suggested-outfit-container h2,
+        .assistant-container h2 {
+          margin-bottom: 1rem;
+          font-size: 1.2rem;
+        }
+    
+        /* Example outfit items */
+        .outfit-items {
+          display: flex;
+          gap: 1rem;
+        }
+    
+        .outfit-items img {
+          width: 70px;
+          height: 70px;
+          object-fit: contain;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        }
+    
+        /* Assistant container */
+        .assistant-question {
+          background: #333;
+          color: #fff;
+          padding: 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+        }
+    
+        .assistant-question button {
+          background: #222;
+          color: #fff;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+    
+        .assistant-question button:hover {
+          background: #555;
+        }
+    
+        .assistant-response {
+          margin-top: 1rem;
+          padding: 1rem;
+          background: #f0f0f0;
+          border-radius: 4px;
+          min-height: 60px;
+        }
+    
+        /* Footer */
+        footer {
+          text-align: center;
+          padding: 1rem 0;
+          background: white;
+          margin-top: 2rem;
+          box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+    
+        footer p {
+          font-size: 0.9rem;
+          color: #666;
+        }
+    
+        .highlight {
+          font-weight: bold;
+          color: #222;
+        }
+      </style>
 </head>
 <body>
     <header class="header">
@@ -17,11 +194,51 @@
                     <img src="/static/images/profile.png" alt="Profile">
                 </a>
                 <div class="dropdown-menu">
+                    <a href="/wardrobe">Wardrobe</a>
                     <a href="/logout" id="logout-btn">Logout</a>
                 </div>
             </div>
         </nav>        
     </header>
+
+    <!-- Top Row: Temperature/Humidity Chart & Weather Forecast -->
+  <div class="top-row">
+    <!-- Left: Live Temperature &amp; Humidity Chart -->
+    <div class="temp-hum-container">
+      <h2>Live Temperature &amp; Humidity</h2>
+      <!-- Replace this with your chart library code -->
+      <div class="chart-placeholder" id="chartPlaceholder">
+        Chart Goes Here
+      </div>
+    </div>
+
+    <!-- Right: Today's Weather Forecast -->
+    <div class="weather-forecast-container">
+      <h2>Today's Weather Forecast</h2>
+      <div class="weather-location" id="weatherLocation">City Name</div>
+      <div class="current-temp" id="currentTemp">--°F</div>
+    </div>
+  </div>
+
+  
+    
+   
+    
+    <!-- Assistant -->
+    <div class="assistant-container">
+      <h2>AI Assistant</h2>
+      <div class="assistant-question">
+        <p>What should I wear today?</p>
+        <!-- Only one button with id="assistantBtn" -->
+        <button id="assistantBtn" style="position: relative; z-index: 9999;">Get Recommendation</button>
+      
+
+      </div>
+      <div class="assistant-response" id="assistantResponse">
+        <!-- AI Assistant response will appear here -->
+      </div>
+    </div>
+  </div>
 
 
 
@@ -44,5 +261,100 @@
         </div>
     </div>
 
+
+    <script>
+        console.log("Dashboard script loaded");
+        
+        // Load weather data and return it for reuse.
+        async function loadWeather() {
+          try {
+            const response = await fetch("/api/weather");
+            const data = await response.json();
+            if (data.error) {
+              document.getElementById("weatherLocation").textContent = "Error: " + data.error;
+              return null;
+            }
+            document.getElementById("weatherLocation").textContent = data.city || "City Name";
+            document.getElementById("currentTemp").textContent = data.temperature + "°" + (data.unit || "F");
+            return data;
+          } catch (err) {
+            console.error(err);
+            return null;
+          }
+        }
+        
+        // Ask the AI assistant for a recommendation and generate an outfit image.
+        async function askAssistant() {
+          try {
+            // Step 1: Get current weather data.
+            const weatherData = await loadWeather();
+            let temperature = weatherData ? weatherData.temperature : "unknown";
+            let city = weatherData ? weatherData.city : "Unknown City";
+            
+            // Step 2: Build a prompt that includes the weather info.
+            let prompt = `What should I wear today? The current temperature in ${city} it is currently ${temperature}°F.`;
+            
+            // Step 3: Call the recommendation endpoint.
+            const recResponse = await fetch("/api/recommendation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prompt: prompt })
+            });
+            const recData = await recResponse.json();
+            const recommendationText = recData.message || "No recommendation yet";
+            
+            // Update the assistant response element with the recommendation text.
+            document.getElementById("assistantResponse").textContent = recommendationText;
+            
+           // Step 4: Use the recommendation text to generate an outfit image.
+            const imgResponse = await fetch("/api/ai/image", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prompt: recommendationText, width: 512, height: 512 })
+            });
+            const imgData = await imgResponse.json();
+            
+            // Step 5: If an image URL is returned, display it.
+            if (imgData.image_url) {
+              const outfitContainer = document.getElementById("outfitContainer");
+              outfitContainer.innerHTML = "";  // Clear any previous content
+              const imgElement = document.createElement("img");
+              imgElement.src = imgData.image_url;
+              imgElement.alt = "AI-Generated Outfit";
+              imgElement.style.maxWidth = "100%";
+              outfitContainer.appendChild(imgElement);
+            } else {
+              console.error("No image URL returned from AI image API", imgData);
+            }
+          } catch (err) {
+            console.error("Error in AI assistant:", err);
+            document.getElementById("assistantResponse").textContent = "Error fetching AI response.";
+          }
+        }
+        
+        // Placeholder for chart functionality.
+        function loadChart() {
+          document.getElementById("chartPlaceholder").textContent = "Chart library goes here";
+        }
+        
+        
+        document.addEventListener("DOMContentLoaded", () => {
+          console.log("DOMContentLoaded event fired");
+          loadWeather();
+          loadChart();
+          
+          const assistantBtn = document.getElementById("assistantBtn");
+          if (!assistantBtn) {
+            console.error("assistantBtn not found!");
+          } else {
+            console.log("assistantBtn found");
+            assistantBtn.addEventListener("click", () => {
+              console.log("assistantBtn clicked!");
+             // alert("Button clicked!");  // For debugging
+              askAssistant();
+            });
+          }
+        });
+      </script>
 </body>
 </html>

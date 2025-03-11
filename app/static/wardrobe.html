@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wardrobe | FIT</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="icon" type="image/png" href="/static/images/bonix.png">
+  <!-- Optionally include a separate JS file if you prefer -->
+  <!-- <script src="/static/js/wardrobe.js"></script> -->
+  <style>
+    /* Additional styles specific for the wardrobe page */
+    .container {
+      margin: 2rem;
+    }
+    h1.page-title {
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    form {
+      margin-top: 1rem;
+    }
+    input[type="text"] {
+      padding: 8px;
+      margin-right: 8px;
+      width: 200px;
+    }
+    button {
+      padding: 8px 12px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header (same as your provided starter code) -->
+  <header class="header">
+    <div class="logo">
+      <a href="/dashboard">FIT</a>
+    </div>
+    <nav class="nav-buttons">
+      <div class="dropdown">
+        <a href="/profile" class="btn-profile">
+          <img src="/static/images/profile.png" alt="Profile">
+        </a>
+        <div class="dropdown-menu">
+          <!-- Added link to Wardrobe -->
+          <a href="/wardrobe">Wardrobe</a>
+          <a href="/logout" id="logout-btn">Logout</a>
+          
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Your Wardrobe</h1>
+    
+    <!-- Wardrobe List -->
+    <section class="wardrobe-list">
+      <h2>Clothing Items</h2>
+      <table id="clothesTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Clothing items will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </section>
+    
+    <!-- Add Clothing Form -->
+    <section class="add-clothing">
+      <h2>Add New Clothing Item</h2>
+      <form id="addClothingForm">
+        <input type="text" id="clothingName" placeholder="Clothing Name" required>
+        <input type="text" id="clothingType" placeholder="Type (e.g., Shirt, Pants)" required>
+        <button type="submit">Add Item</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Footer (same as provided) -->
+  <div class="footer-container">
+    <div class="footer">
+      <div class="footer-text">
+        <span class="highlight">F</span><span class="normal">ashion.</span> 
+        <span class="highlight">I</span><span class="normal">ntelligence.</span> 
+        <span class="highlight">T</span><span class="normal">echnology.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript for CRUD functionality -->
+  <script>
+    // Fetch all clothing items for the user
+    async function fetchClothes() {
+      try {
+        const response = await fetch('/api/wardrobe');
+        const data = await response.json();
+        populateTable(data);
+      } catch (err) {
+        console.error("Error fetching clothes:", err);
+      }
+    }
+    
+    // Populate the table with clothing items
+    function populateTable(clothes) {
+      const tbody = document.getElementById('clothesTable').querySelector('tbody');
+      tbody.innerHTML = ''; // Clear existing rows.
+      clothes.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.id}</td>
+          <td>${item.name}</td>
+          <td>${item.type}</td>
+          <td>
+            <button onclick="deleteClothing(${item.id})">Delete</button>
+            <button onclick="updateClothingPrompt(${item.id}, '${item.name}', '${item.type}')">Update</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    
+    // Add a new clothing item
+    async function addClothing(event) {
+      event.preventDefault();
+      const name = document.getElementById('clothingName').value;
+      const type = document.getElementById('clothingType').value;
+      try {
+        const response = await fetch('/api/wardrobe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, type })
+        });
+        const data = await response.json();
+        console.log("Added:", data);
+        fetchClothes();
+      } catch (err) {
+        console.error("Error adding clothing:", err);
+      }
+    }
+    
+    // Delete a clothing item
+    async function deleteClothing(id) {
+      try {
+        await fetch(`/api/wardrobe/${id}`, { method: 'DELETE' });
+        fetchClothes();
+      } catch (err) {
+        console.error("Error deleting clothing:", err);
+      }
+    }
+    
+    // Prompt and update a clothing item
+    function updateClothingPrompt(id, currentName, currentType) {
+      const newName = prompt("Enter new name:", currentName);
+      const newType = prompt("Enter new type:", currentType);
+      if (newName && newType) {
+        updateClothing(id, newName, newType);
+      }
+    }
+    
+    async function updateClothing(id, name, type) {
+      try {
+        await fetch(`/api/wardrobe/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, type })
+        });
+        fetchClothes();
+      } catch (err) {
+        console.error("Error updating clothing:", err);
+      }
+    }
+    
+    // Attach event listener to the add form
+    document.getElementById('addClothingForm').addEventListener('submit', addClothing);
+    
+    // Load clothing items when the page loads
+    document.addEventListener('DOMContentLoaded', fetchClothes);
+  </script>
+</body>
+</html>

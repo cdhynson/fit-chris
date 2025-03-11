@@ -104,6 +104,17 @@ async def setup_database(initial_users: list = None, initial_devices: list = Non
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """
+
+        "wardrobe": """
+            CREATE TABLE wardrobe (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                type VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """
     }
 
     try:
@@ -112,7 +123,7 @@ async def setup_database(initial_users: list = None, initial_devices: list = Non
         cursor = connection.cursor()
 
         # Drop and recreate tables one by one
-        for table_name in ["sessions", "devices", "users"]:
+        for table_name in ["wardrobe", "sessions", "devices", "users", ]:
             logger.info(f"Dropping table {table_name} if exists...")
             cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
             connection.commit()
@@ -422,3 +433,111 @@ async def create_device(user_id: int, name: str, serial: str):
             connection.close()
 
 
+
+
+
+
+###########################################################
+## ----------------------------------------------------- ##
+## ------------ WARDROBE CRUD                ----------- ##
+## ----------------------------------------------------- ##
+###########################################################
+
+
+# Wardrobe CRUD Helper Functions
+async def get_wardrobe_items(user_id: int) -> list:
+    """Retrieve all wardrobe items for a given user."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM wardrobe WHERE user_id = %s", (user_id,))
+        items = cursor.fetchall()
+        return items
+    except Exception as e:
+        logger.error(f"Error fetching wardrobe items: {e}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+async def create_wardrobe_item(user_id: int, name: str, type_: str) -> Optional[dict]:
+    """Create a new wardrobe item for a given user."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        insert_query = "INSERT INTO wardrobe (user_id, name, type) VALUES (%s, %s, %s)"
+        cursor.execute(insert_query, (user_id, name, type_))
+        connection.commit()
+        # Get the inserted item (using LAST_INSERT_ID())
+        cursor.execute("SELECT * FROM wardrobe WHERE id = LAST_INSERT_ID()")
+        return cursor.fetchone()
+    except Exception as e:
+        logger.error(f"Error creating wardrobe item: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+async def update_wardrobe_item(item_id: int, user_id: int, name: Optional[str], type_: Optional[str]) -> Optional[dict]:
+    """Update an existing wardrobe item for a given user."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        fields = []
+        values = []
+        if name:
+            fields.append("name = %s")
+            values.append(name)
+        if type_:
+            fields.append("type = %s")
+            values.append(type_)
+        if not fields:
+            return None  # Nothing to update.
+        values.append(item_id)
+        values.append(user_id)
+        query = f"UPDATE wardrobe SET {', '.join(fields)} WHERE id = %s AND user_id = %s"
+        cursor.execute(query, tuple(values))
+        connection.commit()
+        # Return the updated item.
+        cursor.execute("SELECT * FROM wardrobe WHERE id = %s AND user_id = %s", (item_id, user_id))
+        return cursor.fetchone()
+    except Exception as e:
+        logger.error(f"Error updating wardrobe item: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+async def delete_wardrobe_item(item_id: int, user_id: int) -> bool:
+    """Delete a wardrobe item for a given user."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM wardrobe WHERE id = %s AND user_id = %s", (item_id, user_id))
+        connection.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        logger.error(f"Error deleting wardrobe item: {e}")
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
