@@ -26,6 +26,7 @@ from database import (
     create_wardrobe_item,
     update_wardrobe_item,
     delete_wardrobe_item,
+    delete_device,
 
 )
 
@@ -38,16 +39,16 @@ INIT_USERS = [
      "password": "pass456",         "location": "California"},
 
     {"fullname": "Chris Evans",     "username": "chris", 
-     "password": "password",        "location": "Texas"}
+     "password": "password",        "location": "California"}
 ]
 
 INIT_DEVICES = [
-    {"name": "Alice's Laptop", "serial": "A123", "username": "alice"},
+    {"name": "Alice's ESP32", "serial": "A123", "username": "alice"},
 
-    {"name": "Bob's Tablet", "serial": "B789", "username": "bob"},
+    {"name": "Bob's ESP32", "serial": "B123", "username": "bob"},
     
-    {"name": "Chris' PC", "serial": "C101", "username": "chris"},
-    {"name": "Chris' Smartwatch", "serial": "C202", "username": "chris"}
+    {"name": "Chris' ESP32", "serial": "C123", "username": "chris"},
+    {"name": "Chris' Arduino", "serial": "C202", "username": "chris"}
 ]
 
 class DeviceCreate(BaseModel):
@@ -332,7 +333,24 @@ async def add_device(request: Request, device: DeviceCreate):
     await create_device(user_id=user["id"], name=device.name, serial=device.serial)
     return {"message": "Device added successfully"}
 
+@app.delete("/devices/{serial}")
+async def remove_device(request: Request, serial: str):
+    session_id = request.cookies.get("sessionId")
 
+    if not session_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    user = await get_user_by_session(session_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    # ✅ Delete the device from the database
+    success = await delete_device(user_id=user["id"], serial=serial)
+
+    if success:
+        return {"message": f"Device {serial} removed successfully."}
+    else:
+        raise HTTPException(status_code=404, detail="Device not found or deletion failed")
 
 ###########################################################
 ## ----------------------------------------------------- ##

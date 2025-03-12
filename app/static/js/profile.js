@@ -224,6 +224,72 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 
 
+document.addEventListener("DOMContentLoaded", async function () {
+    const removeDeviceDropdown = document.getElementById("remove-device-dropdown");
+    const removeDeviceBtn = document.getElementById("remove-device-btn");
+
+    // ✅ Fetch Devices and Populate Dropdown
+    async function fetchDevices() {
+        try {
+            console.log("✅ Fetching devices...");
+            const response = await fetch("/devices"); // Fetch devices from backend
+
+            if (response.ok) {
+                const devices = await response.json();
+                console.log("✅ Devices received:", devices);
+
+                removeDeviceDropdown.innerHTML = '<option value="">Select Device</option>'; // Reset dropdown
+
+                devices.forEach(device => {
+                    const option = document.createElement("option");
+                    option.value = device.serial;
+                    option.textContent = device.name;
+                    removeDeviceDropdown.appendChild(option);
+                });
+
+            } else {
+                console.error("❌ Failed to fetch devices:", await response.text());
+            }
+        } catch (error) {
+            console.error("❌ Error fetching devices:", error);
+        }
+    }
+
+    // ✅ Handle Remove Device Click (Trash Button)
+    removeDeviceBtn.addEventListener("click", async function () {
+        const selectedSerial = removeDeviceDropdown.value;
+
+        if (!selectedSerial) {
+            alert("❌ Please select a device to remove.");
+            return;
+        }
+
+        const confirmation = confirm("Are you sure you want to remove this device?");
+        if (!confirmation) return;
+
+        try {
+            console.log(`🗑️ Removing Device: Serial ${selectedSerial}...`);
+
+            const response = await fetch(`/devices/${selectedSerial}`, {
+                method: "DELETE"
+            });
+
+            if (response.ok) {
+                alert("✅ Device removed successfully!");
+                fetchDevices(); // Refresh device list
+            } else {
+                alert("❌ Failed to remove device.");
+            }
+        } catch (error) {
+            console.error("❌ Error removing device:", error);
+        }
+    });
+
+    // ✅ Load Devices on Page Load
+    fetchDevices();
+    adjustDeviceContainerHeight();
+});
+
 
 
 

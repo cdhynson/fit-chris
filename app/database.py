@@ -433,7 +433,35 @@ async def create_device(user_id: int, name: str, serial: str):
             connection.close()
 
 
+async def delete_device(user_id: int, serial: str):
+    """Delete a device from the database for the given user."""
+    connection = None
+    cursor = None
 
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = "DELETE FROM devices WHERE user_id = %s AND serial = %s"
+        cursor.execute(query, (user_id, serial))
+        connection.commit()
+
+        if cursor.rowcount > 0:
+            print(f"🗑️ Device with serial {serial} removed for user ID {user_id}")  # Debugging
+            return True
+        else:
+            print(f"❌ Device with serial {serial} not found for user ID {user_id}")
+            return False
+
+    except mysql.connector.Error as e:
+        print(f"❌ Error removing device: {e}")
+        return False
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
 
 
 
