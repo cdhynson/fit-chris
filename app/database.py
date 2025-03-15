@@ -39,10 +39,13 @@ def get_db_connection(
     while attempt <= max_retries:
         try:
             connection = mysql.connector.connect(
-                host=os.getenv("MYSQL_HOST"),
-                user=os.getenv("MYSQL_USER"),
-                password=os.getenv("MYSQL_PASSWORD"),
-                database=os.getenv("MYSQL_DATABASE"),
+                host=os.getenv('MYSQL_HOST'),
+                port=int(os.getenv('MYSQL_PORT')),
+                user=os.getenv('MYSQL_USER'),
+                password=os.getenv('MYSQL_PASSWORD'),
+                database=os.getenv('MYSQL_DATABASE'),
+                ssl_ca=os.getenv('MYSQL_SSL_CA'),  # Path to CA certificate file
+                ssl_verify_identity=True
             )
 
             # Test the connection
