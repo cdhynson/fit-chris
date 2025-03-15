@@ -12,6 +12,13 @@ from mysql.connector import Error
 # Load environment variables
 load_dotenv()
 
+DB_CONFIG = {
+    "host": os.getenv("MYSQL_HOST", "db"),  # Default to "db" as per Docker service name
+    "user": os.getenv("MYSQL_USER"),
+    "password": os.getenv("MYSQL_PASSWORD"),
+    "database": os.getenv("MYSQL_DATABASE"),
+}
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -75,6 +82,14 @@ async def setup_database(initial_users: list = None, initial_devices: list = Non
 
     # Define table schemas
     table_schemas = {
+        "temperature": """
+            CREATE TABLE IF NOT EXISTS temperature (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                timestamp DATETIME NOT NULL,
+                value FLOAT NOT NULL,
+                unit VARCHAR(20) NOT NULL
+            );
+        """,
         "users": """
             CREATE TABLE users (
                 id INT AUTO_INCREMENT PRIMARY KEY,

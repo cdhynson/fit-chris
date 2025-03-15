@@ -4,6 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard | FIT</title>
+
+
+
+
+
+
+
+
+
+    <!-- ✅ Load Chart.js and Plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.0"></script>
+
+
+
+
+
+
+
+
+
+
+
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
         /* Basic Reset */
@@ -181,6 +206,29 @@
           font-weight: bold;
           color: #222;
         }
+
+
+
+
+
+
+
+
+
+
+        /* Responsive Chart Container */
+        .chart-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 400px; /* Adjust the height dynamically */
+            margin: auto;
+        }
+
+
+
+
+
+
       </style>
 </head>
 <body>
@@ -203,16 +251,24 @@
         </nav>        
     </header>
 
-    <!-- Top Row: Temperature/Humidity Chart & Weather Forecast -->
+
+
+
+
+
+
+
+
+
+    <!-- Top Row: Temperature Chart & Weather Forecast -->
   <div class="top-row">
-    <!-- Left: Live Temperature &amp; Humidity Chart -->
+    <!-- Left: Live Temperature Chart -->
     <div class="temp-hum-container">
-      <h2>Live Temperature &amp; Humidity</h2>
-      <!-- Replace this with your chart library code -->
+      <h2>Live Temperature</h2>
       <div class="chart-placeholder" id="chartPlaceholder">
-        Chart Goes Here
+          <canvas id="temperatureChart"></canvas> <!-- Chart.js will render here -->
       </div>
-    </div>
+  </div>
 
     <!-- Right: Today's Weather Forecast -->
     <div class="weather-forecast-container">
@@ -294,7 +350,7 @@
             let city = weatherData ? weatherData.city : "Unknown City";
             
             // Step 2: Build a prompt that includes the weather info.
-            let prompt = `What should I wear today? The current temperature in ${city} it is currently ${temperature}°F.`;
+            let prompt = `What should I wear today? The current temperature in ${city} it is currently ${temperature}°F. There will be 3 pieces that you will return in the response. The first piece of clothing will be the top so you can suggest short sleeve shirt, long sleeve shirt, etc. The second piece of clothing will be a bottom so you can suggest shorts, jeans, sweats, etc. The third piece of clothing will be a layering piece so you can suggest a jacket, sweater, no layering piece, etc.`;
             
             // Step 3: Call the recommendation endpoint.
             const recResponse = await fetch("/api/recommendation", {
@@ -334,16 +390,16 @@
           }
         }
         
-        // Placeholder for chart functionality.
-        function loadChart() {
-          document.getElementById("chartPlaceholder").textContent = "Chart library goes here";
-        }
+        // // Placeholder for chart functionality.
+        // function loadChart() {
+        //   document.getElementById("chartPlaceholder").textContent = "Chart library goes here";
+        // }
         
         
         document.addEventListener("DOMContentLoaded", () => {
           console.log("DOMContentLoaded event fired");
           loadWeather();
-          loadChart();
+          // loadChart();
           
           const assistantBtn = document.getElementById("assistantBtn");
           if (!assistantBtn) {
@@ -356,6 +412,88 @@
               askAssistant();
             });
           }
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const ctx = document.getElementById("temperatureChart").getContext("2d");
+
+            // ✅ Create Chart.js Line Chart
+            const temperatureChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "Temperature (°C)",
+                        data: [],
+                        borderColor: "red",
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,  // ✅ Makes the graph responsive
+                    maintainAspectRatio: false,  // ✅ Allows resizing based on div size
+                    scales: {
+                        x: {
+                            type: "time",
+                            time: {
+                                unit: "minute"
+                            },
+                            title: {
+                                display: true,
+                                text: "Timestamp"
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: "Temperature (°C)"
+                            }
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: "xy"
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: "xy"
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ✅ WebSocket Connection for Live Updates
+            const socket = new WebSocket("ws://localhost:8000/ws/sensor/temperature");
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const labels = data.map(entry => entry.timestamp);
+                const values = data.map(entry => entry.value);
+
+                temperatureChart.data.labels = labels;
+                temperatureChart.data.datasets[0].data = values;
+                temperatureChart.update();
+            };
         });
       </script>
 </body>

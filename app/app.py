@@ -1,5 +1,8 @@
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException, status, Form
+import os
+from mysql.connector import connect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request, Response, HTTPException, status, Form, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import uuid
@@ -10,7 +13,7 @@ from pydantic import BaseModel
 import requests
 from datetime import datetime
 from decorators import auth_required
-
+from dotenv import load_dotenv
 from database import (
     setup_database,
     get_user_by_username,
@@ -29,6 +32,9 @@ from database import (
     delete_device,
 
 )
+import json
+import asyncio
+active_connections = set()
 
 # TODO: 1. create your own user
 INIT_USERS = [
@@ -50,6 +56,15 @@ INIT_DEVICES = [
     {"name": "Chris' ESP32", "serial": "C123", "username": "chris"},
     {"name": "Chris' Arduino", "serial": "C202", "username": "chris"}
 ]
+
+def get_db_connection():
+    return connect(
+        host=os.getenv("MYSQL_HOST"),
+        user=os.getenv("MYSQL_USER"),
+        password=os.getenv("MYSQL_PASSWORD"),
+        database=os.getenv("MYSQL_DATABASE"),
+    )
+
 
 class DeviceCreate(BaseModel):
     name: str
@@ -75,10 +90,22 @@ async def lifespan(app: FastAPI):
     finally:
         print("Shutdown completed")
 
-
+load_dotenv()
 
 # Create FastAPI app with lifespan
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+AI_API_EMAIL = os.getenv("AI_API_EMAIL")
+AI_API_PID = os.getenv("AI_API_PID")
+
 
 # Mount the "static" folder so it's accessible at "/static"
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -381,7 +408,7 @@ async def wardrobe_page(request: Request):
     return read_html("./static/wardrobe.html")
 ###########################################################
 ## ----------------------------------------------------- ##
-## ---------------- Weather API --------------- ##
+## -------------------- Weather API -------------------- ##
 ## ----------------------------------------------------- ##
 ###########################################################
 
@@ -449,10 +476,7 @@ async def weather(request: Request):
         "temperature": temperature,
         "unit": unit,
         "icon": icon
-    }
-
-AI_API_EMAIL = "rkalyanakumar@ucsd.edu"      
-AI_API_PID = "A17566293"             
+    }           
 
 @app.post("/api/recommendation")
 async def recommendation(request: Request):
@@ -517,6 +541,200 @@ async def generate_image(request: Request):
         raise HTTPException(status_code=500, detail="Error decoding JSON from AI Image API")
     
     return json_data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SENSOR_TYPES = ["temperature"]
+
+@app.get("/api/{sensor_type}")
+def get_sensor_data(
+    sensor_type: str,
+    order_by: str = Query(None, alias="order-by"),
+    start_date: str = Query(None, alias="start-date"),
+    end_date: str = Query(None, alias="end-date")
+):
+    if sensor_type not in SENSOR_TYPES:
+        raise HTTPException(status_code=404, detail="Invalid sensor type")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = f"SELECT * FROM {sensor_type}"
+    conditions = []
+    params = []
+
+    if start_date:
+        conditions.append("timestamp >= %s")
+        params.append(start_date)
+    if end_date:
+        conditions.append("timestamp <= %s")
+        params.append(end_date)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    if order_by in ["value", "timestamp"]:
+        query += f" ORDER BY {order_by}"
+
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+
+    
+    for row in results:
+        row["timestamp"] = row["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+
+    cursor.close()
+#     conn.close()
+
+    return results
+
+@app.post("/api/{sensor_type}")
+def insert_sensor_data(sensor_type: str, data: dict):
+    if sensor_type not in SENSOR_TYPES:
+        raise HTTPException(status_code=404, detail="Invalid sensor type")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    timestamp = data.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  
+    value = data.get("value")
+    unit = data.get("unit")
+
+    if value is None or unit is None:
+        raise HTTPException(status_code=400, detail="Missing required fields: value, unit")
+
+    query = f"INSERT INTO {sensor_type} (timestamp, value, unit) VALUES (%s, %s, %s)"
+    cursor.execute(query, (timestamp, value, unit))
+    conn.commit()
+    inserted_id = cursor.lastrowid
+
+    cursor.close()
+    conn.close()
+    return {"id": inserted_id}
+
+@app.websocket("/ws/sensor/{sensor_type}")
+async def websocket_endpoint(websocket: WebSocket, sensor_type: str):
+    await websocket.accept()
+    active_connections.add(websocket)
+
+    try:
+        while True:
+            await asyncio.sleep(2)  # Update Every 2 Seconds
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+
+            query = f"SELECT * FROM {sensor_type} ORDER BY timestamp DESC LIMIT 10"
+            cursor.execute(query)
+            results = cursor.fetchall()
+
+            for row in results:
+                row["timestamp"] = row["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+
+            cursor.close()
+            conn.close()
+
+            data = json.dumps(results)
+            await websocket.send_text(data)
+
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.put("/api/{sensor_type}/{id}")
+def update_sensor_data(sensor_type: str, id: int, data: dict):
+    if sensor_type not in SENSOR_TYPES:
+        raise HTTPException(status_code=404, detail="Invalid sensor type")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    update_fields = []
+    params = []
+
+    if "value" in data:
+        update_fields.append("value = %s")
+        params.append(data["value"])
+    if "unit" in data:
+        update_fields.append("unit = %s")
+        params.append(data["unit"])
+    if "timestamp" in data:
+        update_fields.append("timestamp = %s")
+        params.append(data["timestamp"])
+
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields provided for update")
+
+    params.append(id)
+    query = f"UPDATE {sensor_type} SET {', '.join(update_fields)} WHERE id = %s"
+
+    cursor.execute(query, tuple(params))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"message": "Data updated successfully"}
+
+@app.delete("/api/{sensor_type}/{id}")
+def delete_sensor_data(sensor_type: str, id: int):
+    if sensor_type not in SENSOR_TYPES:
+        raise HTTPException(status_code=404, detail="Invalid sensor type")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = f"DELETE FROM {sensor_type} WHERE id = %s"
+    cursor.execute(query, (id,))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"message": "Data deleted successfully"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###########################################################
 ## ---------------- WARDROBE CRUD ENDPOINTS -------------- ##
@@ -640,3 +858,18 @@ async def delete_clothing(item_id: int, request: Request):
         raise HTTPException(status_code=404, detail="Item not found")
     return JSONResponse(content={"detail": "Item deleted"})
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+   uvicorn.run(app="app.main:app", host="0.0.0.0", port=3306, reload=True)
