@@ -14,7 +14,7 @@ import requests
 from datetime import datetime
 from app.decorators import auth_required
 from dotenv import load_dotenv
-from database import (
+from app.database import (
     setup_database,
     get_user_by_username,
     get_user_by_id,
