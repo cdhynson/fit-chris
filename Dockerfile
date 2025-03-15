@@ -1,12 +1,10 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ./app .
+COPY ./app ./app
 
-# Command to run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"] 
