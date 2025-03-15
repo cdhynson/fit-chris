@@ -9,12 +9,12 @@ import uuid
 from typing import Dict
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
-
+import asyncio
 import requests
 from datetime import datetime
-from app.decorators import auth_required
+from decorators import auth_required
 from dotenv import load_dotenv
-from app.database import (
+from database import (
     setup_database,
     get_user_by_username,
     get_user_by_id,
@@ -76,15 +76,28 @@ def get_error_html(username: str) -> str:
     return error_html.replace("{username}", username)
 
 
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     """
+#     Lifespan context manager for managing application startup and shutdown.
+#     Handles database setup and cleanup in a more structured way.
+#     """
+#     # Startup: Setup resources
+#     try:
+#         await setup_database(INIT_USERS, INIT_DEVICES)  # Make sure setup_database is async
+#         print("Database setup completed")
+#         yield
+#     finally:
+#         print("Shutdown completed")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for managing application startup and shutdown.
-    Handles database setup and cleanup in a more structured way.
     """
-    # Startup: Setup resources
     try:
-        await setup_database(INIT_USERS, INIT_DEVICES)  # Make sure setup_database is async
+        # Run the blocking setup_database in a separate thread
+        await asyncio.to_thread(setup_database, INIT_USERS, INIT_DEVICES)
         print("Database setup completed")
         yield
     finally:
@@ -865,11 +878,11 @@ async def delete_clothing(item_id: int, request: Request):
 
 
 
-#comment
 
 
 
 
 
-# if __name__ == "__main__":
-#    uvicorn.run(app="app.main:app", host="0.0.0.0", port=3306, reload=True)
+
+if __name__ == "__main__":
+   uvicorn.run(app="app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -12,7 +12,7 @@ import time
 import json
 from datetime import datetime, timedelta
 from pydantic import BaseModel
-from app.database import get_session, get_user_by_id, delete_session
+from database import get_session, get_user_by_id, delete_session
 
 def auth_required(func: Callable) -> Callable:
     """
@@ -151,4 +151,3 @@ def auth_required(func):
         request.state.user = user
         return await func(request, *args, **kwargs)
     return wrapper
-
