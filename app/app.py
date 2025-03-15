@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 import requests
 from datetime import datetime
-from decorators import auth_required
+from app.decorators import auth_required
 from dotenv import load_dotenv
 from database import (
     setup_database,
