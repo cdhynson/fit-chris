@@ -94,7 +94,8 @@ from datetime import datetime
 
 load_dotenv()
 BASE_TOPIC = os.getenv("BASE_TOPIC", "chynson/ece140/sensors")  # Default value if not set
-WEB_SERVER_URL = "http://localhost:8000/api/temperature"
+# WEB_SERVER_URL = "http://localhost:8000/api/temperature"
+WEB_SERVER_URL = "https://depolyed-fit.onrender.com/api/temperature"
 
 BROKER = "broker.hivemq.com"
 PORT = 1883
@@ -187,4 +188,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

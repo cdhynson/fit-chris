@@ -35,17 +35,16 @@ def get_db_connection(
     connection: Optional[mysql.connector.MySQLConnection] = None
     attempt = 1
     last_error = None
-
+    port = int(os.getenv("MYSQL_PORT", 3306))
+    
     while attempt <= max_retries:
         try:
             connection = mysql.connector.connect(
-                host=os.getenv('MYSQL_HOST'),
-                port=int(os.getenv('MYSQL_PORT')),
-                user=os.getenv('MYSQL_USER'),
-                password=os.getenv('MYSQL_PASSWORD'),
-                database=os.getenv('MYSQL_DATABASE'),
-                ssl_ca=os.getenv('MYSQL_SSL_CA'),  # Path to CA certificate file
-                ssl_verify_identity=True
+                host=os.getenv("MYSQL_HOST"),
+                port=port,
+                user=os.getenv("MYSQL_USER"),
+                password=os.getenv("MYSQL_PASSWORD"),
+                database=os.getenv("MYSQL_DATABASE"),
             )
 
             # Test the connection
@@ -78,7 +77,8 @@ def get_db_connection(
     )
 
 
-async def setup_database(initial_users: list = None, initial_devices: list = None):
+# async 
+def setup_database(initial_users: list = None, initial_devices: list = None):
     """Creates user and session tables and populates initial user data if provided."""
     connection = None
     cursor = None
